@@ -1,0 +1,48 @@
+{
+  "name": "claude-office-panel",
+  "displayName": "Claude Office Panel",
+  "description": "Real-time visualization of Claude Code agents in your editor",
+  "version": "0.1.0",
+  "publisher": "kulius",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "claudeOfficePanel.open",
+        "title": "Claude Office: Open Panel"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "claudeOfficePanel.open",
+        "key": "ctrl+shift+alt+o",
+        "mac": "cmd+shift+alt+o"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "lint": "tsc --noEmit",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
