@@ -2,7 +2,7 @@
   "name": "claude-office-panel",
   "displayName": "Claude Office Panel",
   "description": "Real-time visualization of Claude Code agents in your editor",
-  "version": "0.1.0",
+  "version": "0.2.3",
   "publisher": "kulius",
   "engines": {
     "vscode": "^1.85.0"

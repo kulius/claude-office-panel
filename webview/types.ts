@@ -57,5 +57,4 @@ export interface PanelSession {
 export type ExtensionToWebviewMessage =
   | { readonly type: "sessionUpdate"; readonly session: PanelSession }
   | { readonly type: "sessionRemoved"; readonly sessionId: string }
-  | { readonly type: "connectionStatus"; readonly connected: boolean }
-  | { readonly type: "avatarMap"; readonly avatars: Record<string, string> };
+  | { readonly type: "connectionStatus"; readonly connected: boolean };

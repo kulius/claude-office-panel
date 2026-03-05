@@ -1,12 +1,11 @@
 import * as vscode from "vscode";
-import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from "./types";
+import type { ExtensionToWebviewMessage } from "./types";
 
 export class PanelManager {
   private panel: vscode.WebviewPanel | undefined;
   private readonly extensionUri: vscode.Uri;
   private onDispose?: () => void;
   private onReady?: () => void;
-  private onMessage?: (msg: WebviewToExtensionMessage) => void;
 
   constructor(extensionUri: vscode.Uri) {
     this.extensionUri = extensionUri;
@@ -18,10 +17,6 @@ export class PanelManager {
 
   setOnReady(cb: () => void): void {
     this.onReady = cb;
-  }
-
-  setOnMessage(cb: (msg: WebviewToExtensionMessage) => void): void {
-    this.onMessage = cb;
   }
 
   open(): void {
@@ -45,12 +40,9 @@ export class PanelManager {
 
     this.panel.webview.html = this.getHtml();
 
-    // Handle messages from webview
-    this.panel.webview.onDidReceiveMessage((msg: WebviewToExtensionMessage) => {
+    this.panel.webview.onDidReceiveMessage((msg) => {
       if (msg.type === "webviewReady") {
         this.onReady?.();
-      } else {
-        this.onMessage?.(msg);
       }
     });
 
@@ -89,21 +81,22 @@ export class PanelManager {
     );
 
     const nonce = getNonce();
+    const cacheBust = Date.now();
 
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src data:;">
-  <link href="${styleUri}" rel="stylesheet">
+  <link href="${styleUri}?v=${cacheBust}" rel="stylesheet">
   <title>Claude Office</title>
 </head>
 <body>
   <div id="office-canvas"></div>
   <div id="status-bar"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}?v=${cacheBust}"></script>
 </body>
 </html>`;
   }

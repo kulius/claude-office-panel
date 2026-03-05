@@ -130,7 +130,7 @@ export class LocalSessionScanner extends EventEmitter {
   private knownSessions = new Set<string>();
   private connectedEmitted = false;
 
-  private readonly claudeProjectsDir: string;
+  readonly claudeProjectsDir: string;
 
   constructor() {
     super();

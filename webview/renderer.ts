@@ -1,10 +1,5 @@
 import type { BossState, PanelSession, BubbleContent } from "./types";
-import {
-  getClusterPositions,
-  getAgentPositions,
-} from "./layout";
 
-/* Body color by boss state */
 const BOSS_BODY_COLORS: Record<BossState, string> = {
   idle: "#4a5568",
   phone_ringing: "#d97706",
@@ -17,51 +12,34 @@ const BOSS_BODY_COLORS: Record<BossState, string> = {
   completing: "#22c55e",
 };
 
-/* Bilingual state labels */
 const STATE_LABELS: Record<string, string> = {
   idle: "閒置 idle",
-  phone_ringing: "電話響 ring",
-  on_phone: "通話中 call",
-  receiving: "接收中 recv",
+  phone_ringing: "來電 ring",
+  on_phone: "通話 call",
+  receiving: "接收 recv",
   working: "工作中 work",
-  delegating: "派工中 delegate",
+  delegating: "委派 delegate",
   waiting_permission: "等待授權 wait",
-  reviewing: "審查中 review",
+  reviewing: "審查 review",
   completing: "完成 done",
-  thinking: "思考中 think",
-  waiting: "等待中 wait",
-  completed: "已完成 done",
-  arriving: "進入中 arrive",
-  leaving: "離開中 leave",
-  in_elevator: "進入中 arrive",
-  reporting: "報告中 report",
-  walking_to_desk: "就座中 walk",
+  thinking: "思考 think",
+  waiting: "等待 wait",
+  completed: "完成 done",
+  arriving: "進入 arrive",
+  leaving: "離開 leave",
+  in_elevator: "進入 arrive",
+  reporting: "回報 report",
+  walking_to_desk: "就位 walk",
 };
 
-/* Skin tone palette */
 const SKIN = "#fdd8b5";
-/* Hair colors for agents (deterministic from agent color) */
 const HAIR_COLORS = ["#4a3728", "#2d1b0e", "#8b6914", "#c0392b", "#1a1a2e", "#5b3a29", "#e67e22", "#7f8c8d"];
-/* Pants colors */
 const PANTS_COLORS = ["#2c3e50", "#34495e", "#1a237e", "#4a148c", "#263238"];
 
-const ACTIVE_STATES = new Set([
-  "working",
-  "thinking",
-  "reporting",
-  "walking_to_desk",
-]);
-
-function isActiveState(state: string): boolean {
-  return ACTIVE_STATES.has(state);
-}
+const ACTIVE_STATES = new Set(["working", "thinking", "reporting", "walking_to_desk"]);
 
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max - 1) + "\u2026" : text;
-}
-
-function stateLabel(state: string): string {
-  return STATE_LABELS[state] ?? state;
 }
 
 function hashStr(s: string): number {
@@ -80,13 +58,6 @@ function createBubbleEl(bubble: BubbleContent): HTMLElement {
   return el;
 }
 
-/**
- * Build a pixel-art person element.
- * isBoss: larger size, has tie
- * bodyColor: shirt/body color
- * hairColor: hair color
- * pantsColor: leg color
- */
 function createPixelPerson(
   isBoss: boolean,
   bodyColor: string,
@@ -94,26 +65,23 @@ function createPixelPerson(
   pantsColor: string,
 ): HTMLElement {
   const wrap = document.createElement("div");
+  wrap.className = "pixel-person";
 
-  // Hair
   const hair = document.createElement("div");
   hair.className = "pixel-hair";
   hair.style.backgroundColor = hairColor;
   wrap.appendChild(hair);
 
-  // Head
   const head = document.createElement("div");
   head.className = "pixel-head";
   head.style.backgroundColor = SKIN;
   wrap.appendChild(head);
 
-  // Body
   const body = document.createElement("div");
   body.className = "pixel-body";
   body.style.backgroundColor = bodyColor;
   wrap.appendChild(body);
 
-  // Boss tie
   if (isBoss) {
     const tie = document.createElement("div");
     tie.className = "pixel-tie";
@@ -121,7 +89,6 @@ function createPixelPerson(
     body.appendChild(tie);
   }
 
-  // Legs
   const legs = document.createElement("div");
   legs.className = "pixel-legs";
   const legL = document.createElement("div");
@@ -137,167 +104,108 @@ function createPixelPerson(
   return wrap;
 }
 
-export type SessionClickHandler = (sessionId: string, cwd?: string) => void;
-
-let onSessionClick: SessionClickHandler | undefined;
-let onSessionDblClick: SessionClickHandler | undefined;
-
-export function setOnSessionClick(handler: SessionClickHandler): void {
-  onSessionClick = handler;
-}
-
-export function setOnSessionDblClick(handler: SessionClickHandler): void {
-  onSessionDblClick = handler;
-}
-
-interface AvatarStore {
-  getAvatar(cwd?: string): string | undefined;
-}
-
-/** Create an avatar image element to replace the pixel person */
-function createAvatarImg(dataUri: string, size: number): HTMLElement {
-  const img = document.createElement("img");
-  img.src = dataUri;
-  img.className = "avatar-img";
-  img.style.width = `${size}px`;
-  img.style.height = `${size}px`;
-  img.draggable = false;
-  return img;
-}
-
 export function render(
   container: HTMLElement,
   sessions: PanelSession[],
   connected: boolean,
-  avatarStore?: AvatarStore
 ): void {
   container.innerHTML = "";
 
   if (!connected) {
     const msg = document.createElement("div");
-    msg.className = "offline-message";
+    msg.className = "empty-message";
     msg.innerHTML =
-      '<div class="offline-icon">\uD83D\uDD0C</div>' +
+      '<div class="empty-icon">\uD83D\uDD0C</div>' +
       "<p>Scanning for Claude Code sessions\u2026</p>" +
-      "<p class=\"offline-hint\">Sessions in <code>~/.claude/projects/</code></p>";
+      '<p class="empty-hint">Sessions in <code>~/.claude/projects/</code></p>';
     container.appendChild(msg);
     return;
   }
 
   if (sessions.length === 0) {
     const msg = document.createElement("div");
-    msg.className = "offline-message";
+    msg.className = "empty-message";
     msg.innerHTML =
-      '<div class="offline-icon">\uD83C\uDFE2</div>' +
+      '<div class="empty-icon">\uD83C\uDFE2</div>' +
       "<p>No active sessions</p>" +
-      '<p class="offline-hint">Open a terminal and run <code>claude</code> to see agents appear</p>';
+      '<p class="empty-hint">Open a terminal and run <code>claude</code> to see agents appear</p>';
     container.appendChild(msg);
     return;
   }
 
-  // Inject arm color rule once
   ensureArmStyle();
 
-  const positions = getClusterPositions(sessions.length, container.clientWidth);
-
-  sessions.forEach((session, i) => {
-    const pos = positions[i];
-    const cluster = document.createElement("div");
-    cluster.className = "cluster";
-    cluster.style.left = `${pos.x}px`;
-    cluster.style.top = `${pos.y}px`;
-
-    // Boss
+  for (const session of sessions) {
     const bossState = session.boss.state;
     const bodyColor = BOSS_BODY_COLORS[bossState] ?? "#4a5568";
+    const isActive = ACTIVE_STATES.has(bossState);
+
+    const cluster = document.createElement("div");
+    cluster.className = "cluster";
+
+    // 1) Project name (top)
+    const nameLabel = document.createElement("div");
+    nameLabel.className = "cluster-name";
+    nameLabel.textContent = truncate(session.projectName, 20);
+    cluster.appendChild(nameLabel);
+
+    // 2) State badge
+    const badge = document.createElement("div");
+    badge.className = "state-badge";
+    badge.textContent = STATE_LABELS[bossState] ?? bossState;
+    cluster.appendChild(badge);
+
+    // 3) Boss character
     const bossEl = document.createElement("div");
-    const stateClass = `state-${bossState}`;
-    bossEl.className = `character boss ${stateClass} ${isActiveState(bossState) ? "working" : ""}`;
-    bossEl.title = `${session.projectName} — ${bossState}${
-      session.boss.currentTask ? `\n${session.boss.currentTask}` : ""
-    }`;
+    bossEl.className = `character boss state-${bossState} ${isActive ? "working" : ""}`;
+    bossEl.title = `${session.projectName} -- ${bossState}`;
+    bossEl.appendChild(createPixelPerson(true, bodyColor, "#2d1b0e", "#2c3e50"));
 
-    // Use custom avatar or default pixel person
-    const avatarUri = avatarStore?.getAvatar(session.cwd);
-    if (avatarUri) {
-      bossEl.appendChild(createAvatarImg(avatarUri, 40));
-    } else {
-      bossEl.appendChild(createPixelPerson(true, bodyColor, "#2d1b0e", "#2c3e50"));
-    }
-
-    // Click to focus terminal, double-click to change avatar
-    bossEl.style.cursor = "pointer";
-    const sid = session.sessionId;
-    const scwd = session.cwd;
-    bossEl.addEventListener("click", () => onSessionClick?.(sid, scwd));
-    bossEl.addEventListener("dblclick", (e) => {
-      e.stopPropagation();
-      onSessionDblClick?.(sid, scwd);
-    });
-
-    // Boss bubble
     if (session.boss.bubble) {
       bossEl.appendChild(createBubbleEl(session.boss.bubble));
     }
-
     cluster.appendChild(bossEl);
 
-    // Boss label
-    const bossLabel = document.createElement("div");
-    bossLabel.className = "label boss-label";
-    bossLabel.textContent = truncate(session.projectName, 16);
-    cluster.appendChild(bossLabel);
+    // 4) Agents row (horizontal line below boss)
+    if (session.agents.length > 0) {
+      const agentRow = document.createElement("div");
+      agentRow.className = "agent-row";
 
-    // State badge
-    const badge = document.createElement("div");
-    badge.className = "state-badge";
-    badge.textContent = stateLabel(bossState);
-    cluster.appendChild(badge);
+      for (const agent of session.agents) {
+        const h = hashStr(agent.id);
+        const agentHair = HAIR_COLORS[h % HAIR_COLORS.length];
+        const agentPants = PANTS_COLORS[h % PANTS_COLORS.length];
+        const agentActive = ACTIVE_STATES.has(agent.state);
 
-    // Agents
-    const agentPositions = getAgentPositions(session.agents.length, 0, 0);
+        const agentWrap = document.createElement("div");
+        agentWrap.className = "agent-wrap";
 
-    session.agents.forEach((agent, j) => {
-      const aPos = agentPositions[j];
-      const h = hashStr(agent.id);
-      const agentHair = HAIR_COLORS[h % HAIR_COLORS.length];
-      const agentPants = PANTS_COLORS[h % PANTS_COLORS.length];
-      const agentBody = agent.color;
+        const agentEl = document.createElement("div");
+        agentEl.className = `character agent ${agentActive ? "working" : ""} ${
+          agent.state === "leaving" || agent.state === "completed" ? "leaving" : ""
+        } ${agent.state === "arriving" || agent.state === "in_elevator" ? "arriving" : ""}`;
+        agentEl.title = `${agent.name ?? agent.id.slice(0, 8)} -- ${agent.state}`;
+        agentEl.appendChild(createPixelPerson(false, agent.color, agentHair, agentPants));
 
-      const agentEl = document.createElement("div");
-      agentEl.className = `character agent ${isActiveState(agent.state) ? "working" : ""} ${
-        agent.state === "leaving" || agent.state === "completed" ? "leaving" : ""
-      } ${agent.state === "arriving" || agent.state === "in_elevator" ? "arriving" : ""}`;
-      agentEl.style.left = `${aPos.x}px`;
-      agentEl.style.top = `${aPos.y}px`;
-      agentEl.title = `${agent.name ?? agent.id.slice(0, 8)} — ${agent.state}${
-        agent.currentTask ? `\n${agent.currentTask}` : ""
-      }`;
+        if (agent.bubble) {
+          agentEl.appendChild(createBubbleEl(agent.bubble));
+        }
 
-      const agentPerson = createPixelPerson(false, agentBody, agentHair, agentPants);
-      agentEl.appendChild(agentPerson);
+        agentWrap.appendChild(agentEl);
 
-      // Agent bubble
-      if (agent.bubble) {
-        agentEl.appendChild(createBubbleEl(agent.bubble));
+        const agentLabel = document.createElement("div");
+        agentLabel.className = "agent-label";
+        agentLabel.textContent = truncate(agent.name ?? "Agent", 10);
+        agentWrap.appendChild(agentLabel);
+
+        agentRow.appendChild(agentWrap);
       }
 
-      cluster.appendChild(agentEl);
-
-      // Agent label (above the agent in semi-circle layout)
-      const agentLabel = document.createElement("div");
-      agentLabel.className = "label agent-label";
-      agentLabel.style.left = `${aPos.x}px`;
-      agentLabel.style.top = `${aPos.y - 22}px`;
-      agentLabel.textContent = truncate(
-        agent.name ?? agent.currentTask ?? "Agent",
-        14
-      );
-      cluster.appendChild(agentLabel);
-    });
+      cluster.appendChild(agentRow);
+    }
 
     container.appendChild(cluster);
-  });
+  }
 }
 
 let armStyleInjected = false;

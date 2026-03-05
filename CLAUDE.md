@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-**claude-office-panel** is a VS Code extension (v0.1.0) that visualizes active Claude Code sessions as an animated "office" inside a webview panel. It scans `~/.claude/projects/` for `.jsonl` session files, infers boss/agent states from recent activity, and renders pixel-art-style characters with CSS animations.
+**claude-office-panel** is a VS Code extension (v0.2.3) that visualizes active Claude Code sessions as an animated "office" inside a webview panel. It scans `~/.claude/projects/` for `.jsonl` session files, infers boss/agent states from recent activity, and renders pixel-art-style characters with CSS animations and bilingual (Chinese/English) state labels.
 
 ## Build & Development
 
@@ -34,10 +34,8 @@ Runs in VS Code's Node.js host process.
 
 - **`extension.ts`** — Entry point. Registers the `claudeOfficePanel.open` command, manages status bar item showing session count, wires up the scanner and panel.
 - **`LocalSessionScanner.ts`** — Primary data source. Polls `~/.claude/projects/` every 3 seconds, reads `.jsonl` files (tail for state inference, head for cwd), infers `BossState`/`AgentState` from timestamps and message types. Also scans `{sessionDir}/{sessionId}/subagents/agent-*.jsonl` for subagent detection. Emits `sessionUpdate`, `sessionRemoved`, `connected` events.
-- **`BackendClient.ts`** — Alternative data source (currently unused in favor of LocalSessionScanner). Connects to a claude-office backend at `localhost:8000` via HTTP + WebSocket. Handles reconnection with exponential backoff.
-- **`PanelManager.ts`** — Creates/manages the webview panel. Generates HTML with CSP nonce, serves bundled JS/CSS from `dist/webview/`. Forwards `ExtensionToWebviewMessage` to the webview.
-- **`SessionMapper.ts`** — Maps session project roots to VS Code workspace folder names. Tracks terminal open/close for potential future terminal correlation.
-- **`types.ts`** — Shared type definitions for `PanelSession`, `Agent`, `Boss`, `GameState`, state enums, and message protocols.
+- **`PanelManager.ts`** — Creates/manages the webview panel. Generates HTML with CSP nonce and cache-busting query params, serves bundled JS/CSS from `dist/webview/`. Forwards `ExtensionToWebviewMessage` to the webview.
+- **`types.ts`** — Shared type definitions for `PanelSession`, `Agent`, `Boss`, state enums, and message protocols.
 
 ### Webview side (`webview/`)
 
@@ -45,9 +43,9 @@ Runs in the webview's browser sandbox. Types are duplicated in `webview/types.ts
 
 - **`main.ts`** — Listens for `postMessage` from extension, updates store, triggers re-render. Persists state via `vscode.setState()`.
 - **`state.ts`** — Simple observable store (Map of sessions + subscriber pattern).
-- **`renderer.ts`** — DOM-based rendering. Each session becomes a "cluster" with a boss character (colored by state) and agents arranged in a circle. CSS classes drive animations (bounce for working, scale for arriving/leaving).
-- **`layout.ts`** — Grid layout math. `getClusterPositions()` arranges session clusters in columns. `getAgentPositions()` places agents in a circle around the boss.
-- **`styles.css`** — Uses VS Code theme CSS variables. Characters are rounded rectangles with `::before` pseudo-element heads. Animations: bounce (working), arrive (scale in), leave (scale out), bubble fade.
+- **`renderer.ts`** — DOM-based rendering. Each session becomes a "cluster" card with a boss pixel-person (colored by state), bilingual state badge, and agents in a row below. CSS classes drive animations (bounce for working, scale for arriving/leaving).
+- **`layout.ts`** — Minimal layout utilities (truncate helper).
+- **`styles.css`** — Uses VS Code theme CSS variables. Pixel-art characters built from div elements (hair, head with eyes/mouth, body with arms, legs). Flexbox card layout. Animations: bounce (working), arrive (scale in), leave (scale out), idle sway, bubble fade.
 
 ### Data Flow
 
@@ -77,6 +75,20 @@ webview/main.ts -> store -> renderer -> DOM
 |----------|-------|----------|
 | Poll interval | 3000ms | `LocalSessionScanner.ts:8` |
 | Active threshold | 10 min | `LocalSessionScanner.ts:9` |
-| Cluster size | 140x130px | `layout.ts:6-7` |
-| Boss size | 28px | `layout.ts:9` |
-| Agent size | 20px | `layout.ts:10` |
+
+### Deployment Note
+
+The extension runs as an **installed VSIX**, not from the workspace `dist/` folder. After building:
+
+```bash
+npm run build && npm run package
+code --install-extension claude-office-panel-X.Y.Z.vsix --force
+# Then: Developer: Reload Window
+```
+
+Or for quick iteration, copy dist files directly:
+```bash
+cp dist/webview/* ~/.vscode/extensions/kulius.claude-office-panel-X.Y.Z/dist/webview/
+cp dist/extension.js ~/.vscode/extensions/kulius.claude-office-panel-X.Y.Z/dist/
+# Then: Developer: Reload Window
+```

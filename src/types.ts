@@ -101,11 +101,8 @@ export interface PanelSession {
 export type ExtensionToWebviewMessage =
   | { readonly type: "sessionUpdate"; readonly session: PanelSession }
   | { readonly type: "sessionRemoved"; readonly sessionId: string }
-  | { readonly type: "connectionStatus"; readonly connected: boolean }
-  | { readonly type: "avatarMap"; readonly avatars: Record<string, string> };
+  | { readonly type: "connectionStatus"; readonly connected: boolean };
 
 /** Messages from webview to extension */
 export type WebviewToExtensionMessage =
-  | { readonly type: "webviewReady" }
-  | { readonly type: "focusSession"; readonly sessionId: string; readonly cwd?: string }
-  | { readonly type: "changeAvatar"; readonly sessionId: string; readonly cwd?: string };
+  | { readonly type: "webviewReady" };

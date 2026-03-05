@@ -1,5 +1,5 @@
 import { store } from "./state";
-import { render, setOnSessionClick, setOnSessionDblClick } from "./renderer";
+import { render } from "./renderer";
 import type { ExtensionToWebviewMessage } from "./types";
 
 declare function acquireVsCodeApi(): {
@@ -25,17 +25,13 @@ window.addEventListener("message", (event: MessageEvent<ExtensionToWebviewMessag
     case "connectionStatus":
       store.setConnected(msg.connected);
       break;
-    case "avatarMap":
-      store.setAvatars(msg.avatars);
-      break;
   }
 });
 
 // Re-render on state changes
 store.subscribe(() => {
-  render(canvas, store.getSessions(), store.connected, store);
+  render(canvas, store.getSessions(), store.connected);
   updateStatusBar();
-  // Persist state
   vscode.setState({
     sessions: store.getSessions(),
     connected: store.connected,
@@ -50,10 +46,10 @@ function updateStatusBar(): void {
     statusBar.textContent = "Disconnected";
     statusBar.className = "disconnected";
   } else if (sessionCount === 0) {
-    statusBar.textContent = "Connected — no active sessions";
+    statusBar.textContent = "Connected -- no active sessions";
     statusBar.className = "";
   } else {
-    statusBar.textContent = `${sessionCount} session${sessionCount !== 1 ? "s" : ""} · ${agentCount} agent${agentCount !== 1 ? "s" : ""}`;
+    statusBar.textContent = `${sessionCount} session${sessionCount !== 1 ? "s" : ""} | ${agentCount} agent${agentCount !== 1 ? "s" : ""}`;
     statusBar.className = "";
   }
 }
@@ -63,7 +59,7 @@ let resizeTimer: ReturnType<typeof setTimeout> | undefined;
 window.addEventListener("resize", () => {
   if (resizeTimer) clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    render(canvas, store.getSessions(), store.connected, store);
+    render(canvas, store.getSessions(), store.connected);
   }, 100);
 });
 
@@ -77,19 +73,9 @@ if (savedState?.connected !== undefined) {
   store.setConnected(savedState.connected);
 }
 
-// Click on character → ask extension to focus the terminal
-setOnSessionClick((sessionId, cwd) => {
-  vscode.postMessage({ type: "focusSession", sessionId, cwd });
-});
-
-// Double-click on character → change avatar
-setOnSessionDblClick((sessionId, cwd) => {
-  vscode.postMessage({ type: "changeAvatar", sessionId, cwd });
-});
-
 // Tell extension we're ready to receive data
 vscode.postMessage({ type: "webviewReady" });
 
 // Initial render
-render(canvas, store.getSessions(), store.connected, store);
+render(canvas, store.getSessions(), store.connected);
 updateStatusBar();

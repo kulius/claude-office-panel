@@ -6,7 +6,6 @@ class Store {
   private sessions = new Map<string, PanelSession>();
   private listeners: StateListener[] = [];
   private _connected = false;
-  private _avatars: Record<string, string> = {};
 
   get connected(): boolean {
     return this._connected;
@@ -25,17 +24,6 @@ class Store {
   removeSession(sessionId: string): void {
     this.sessions.delete(sessionId);
     this.notify();
-  }
-
-  setAvatars(avatars: Record<string, string>): void {
-    this._avatars = avatars;
-    this.notify();
-  }
-
-  getAvatar(cwd?: string): string | undefined {
-    if (!cwd) return undefined;
-    const key = cwd.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
-    return this._avatars[key];
   }
 
   getSessions(): PanelSession[] {
