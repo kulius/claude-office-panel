@@ -3,11 +3,11 @@ export interface Point {
   y: number;
 }
 
-const CLUSTER_WIDTH = 240;
-const CLUSTER_HEIGHT = 220;
-const CLUSTER_PADDING = 20;
-const BOSS_SIZE = 48;
-const AGENT_SIZE = 36;
+const CLUSTER_WIDTH = 140;
+const CLUSTER_HEIGHT = 130;
+const CLUSTER_PADDING = 12;
+const BOSS_SIZE = 28;
+const AGENT_SIZE = 20;
 
 /** Calculate grid position for each session cluster */
 export function getClusterPositions(
@@ -31,7 +31,7 @@ export function getClusterPositions(
   return positions;
 }
 
-/** Calculate agent positions in a circle around the boss */
+/** Calculate agent positions in a semi-circle above the boss */
 export function getAgentPositions(
   agentCount: number,
   centerX: number,
@@ -39,14 +39,15 @@ export function getAgentPositions(
 ): Point[] {
   if (agentCount === 0) return [];
 
-  const radius = Math.min(120, 60 + agentCount * 8);
+  const radius = Math.min(50, 28 + agentCount * 4);
   const positions: Point[] = [];
 
   for (let i = 0; i < agentCount; i++) {
-    const angle = (2 * Math.PI * i) / agentCount - Math.PI / 2;
+    // Spread across upper semi-circle (PI to 2*PI)
+    const angle = Math.PI + (Math.PI * (i + 0.5)) / agentCount;
     positions.push({
       x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle),
+      y: centerY - 10 + radius * Math.sin(angle),
     });
   }
 

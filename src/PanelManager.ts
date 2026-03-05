@@ -1,10 +1,12 @@
 import * as vscode from "vscode";
-import type { ExtensionToWebviewMessage } from "./types";
+import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from "./types";
 
 export class PanelManager {
   private panel: vscode.WebviewPanel | undefined;
   private readonly extensionUri: vscode.Uri;
   private onDispose?: () => void;
+  private onReady?: () => void;
+  private onMessage?: (msg: WebviewToExtensionMessage) => void;
 
   constructor(extensionUri: vscode.Uri) {
     this.extensionUri = extensionUri;
@@ -12,6 +14,14 @@ export class PanelManager {
 
   setOnDispose(cb: () => void): void {
     this.onDispose = cb;
+  }
+
+  setOnReady(cb: () => void): void {
+    this.onReady = cb;
+  }
+
+  setOnMessage(cb: (msg: WebviewToExtensionMessage) => void): void {
+    this.onMessage = cb;
   }
 
   open(): void {
@@ -34,6 +44,15 @@ export class PanelManager {
     );
 
     this.panel.webview.html = this.getHtml();
+
+    // Handle messages from webview
+    this.panel.webview.onDidReceiveMessage((msg: WebviewToExtensionMessage) => {
+      if (msg.type === "webviewReady") {
+        this.onReady?.();
+      } else {
+        this.onMessage?.(msg);
+      }
+    });
 
     this.panel.onDidDispose(() => {
       this.panel = undefined;
@@ -77,7 +96,7 @@ export class PanelManager {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+    content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src data:;">
   <link href="${styleUri}" rel="stylesheet">
   <title>Claude Office</title>
 </head>

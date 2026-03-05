@@ -1,5 +1,5 @@
 import { store } from "./state";
-import { render } from "./renderer";
+import { render, setOnSessionClick, setOnSessionDblClick } from "./renderer";
 import type { ExtensionToWebviewMessage } from "./types";
 
 declare function acquireVsCodeApi(): {
@@ -25,12 +25,15 @@ window.addEventListener("message", (event: MessageEvent<ExtensionToWebviewMessag
     case "connectionStatus":
       store.setConnected(msg.connected);
       break;
+    case "avatarMap":
+      store.setAvatars(msg.avatars);
+      break;
   }
 });
 
 // Re-render on state changes
 store.subscribe(() => {
-  render(canvas, store.getSessions(), store.connected);
+  render(canvas, store.getSessions(), store.connected, store);
   updateStatusBar();
   // Persist state
   vscode.setState({
@@ -60,7 +63,7 @@ let resizeTimer: ReturnType<typeof setTimeout> | undefined;
 window.addEventListener("resize", () => {
   if (resizeTimer) clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    render(canvas, store.getSessions(), store.connected);
+    render(canvas, store.getSessions(), store.connected, store);
   }, 100);
 });
 
@@ -74,6 +77,19 @@ if (savedState?.connected !== undefined) {
   store.setConnected(savedState.connected);
 }
 
+// Click on character → ask extension to focus the terminal
+setOnSessionClick((sessionId, cwd) => {
+  vscode.postMessage({ type: "focusSession", sessionId, cwd });
+});
+
+// Double-click on character → change avatar
+setOnSessionDblClick((sessionId, cwd) => {
+  vscode.postMessage({ type: "changeAvatar", sessionId, cwd });
+});
+
+// Tell extension we're ready to receive data
+vscode.postMessage({ type: "webviewReady" });
+
 // Initial render
-render(canvas, store.getSessions(), store.connected);
+render(canvas, store.getSessions(), store.connected, store);
 updateStatusBar();

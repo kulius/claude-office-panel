@@ -81,6 +81,7 @@ export interface WebSocketMessage {
 export interface PanelSession {
   readonly sessionId: string;
   readonly projectName: string;
+  readonly cwd?: string;
   readonly boss: {
     readonly state: BossState;
     readonly bubble?: BubbleContent;
@@ -100,4 +101,11 @@ export interface PanelSession {
 export type ExtensionToWebviewMessage =
   | { readonly type: "sessionUpdate"; readonly session: PanelSession }
   | { readonly type: "sessionRemoved"; readonly sessionId: string }
-  | { readonly type: "connectionStatus"; readonly connected: boolean };
+  | { readonly type: "connectionStatus"; readonly connected: boolean }
+  | { readonly type: "avatarMap"; readonly avatars: Record<string, string> };
+
+/** Messages from webview to extension */
+export type WebviewToExtensionMessage =
+  | { readonly type: "webviewReady" }
+  | { readonly type: "focusSession"; readonly sessionId: string; readonly cwd?: string }
+  | { readonly type: "changeAvatar"; readonly sessionId: string; readonly cwd?: string };
